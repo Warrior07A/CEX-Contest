@@ -12,6 +12,7 @@ function getUserId(req: Request): string {
   return req.userId;
 }
 
+let orderId = 1;
 export async function createOrder(req: Request, res: Response): Promise<void> {
   const userId = getUserId(req);
 
@@ -25,14 +26,17 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
   const price = type === "market" ? null : parsedBody.data.price;
 
   const engineResponse = await sendToEngine("create_order", {
+    orderId,
     userId,
     type,
     side,
     symbol,
     price: type === "market" ? null : price,
-    qty,
+    qty,  
   });
 
+  orderId++;
+  
   res.status(engineResponse.ok ? 200 : 400).json(engineResponse.ok ? engineResponse.data : {
     error: engineResponse.error,
   });

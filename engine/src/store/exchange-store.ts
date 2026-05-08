@@ -7,18 +7,6 @@ export interface Balance {
   locked: number;
 }
 
-export interface RestingOrder {
-  orderId: string;
-  userId: string;
-  side: Side;
-  type: "limit";
-  symbol: string;
-  price: number;
-  qty: number;
-  filledQty: number;
-  status: OrderStatus;
-  createdAt: number;
-}
 
 export interface OrderRecord {
   orderId: string;
@@ -44,9 +32,22 @@ export interface Fill {
   createdAt: number;
 }
 
+export interface RestingOrder {
+  orderId: string;
+  userId: string;
+  side: Side;
+  type: "limit";
+  symbol: string;
+  price: number;
+  qty: number;
+  filledQty: number;
+  status: OrderStatus;
+  createdAt: number;
+}
+
 export interface OrderBook {
-  bids: Map<number, RestingOrder[]>;
   asks: Map<number, RestingOrder[]>;
+  bids: Map<number, RestingOrder[]>;
 }
 
 export interface CreateOrderInput {
