@@ -43,19 +43,3 @@ export async function sendToEngine(
   await publisher.lPush(env.incomingQueue, JSON.stringify(message));
   return responsePromise;
 }
-
-export async function listenForEngineResponses(): Promise<void> {
-  console.log(`Listening for engine responses on ${env.responseQueue}`);
-
-  for (;;) {
-    const response = await subscriber.brPop(env.responseQueue, 0);
-    if (!response) continue;
-
-    try {
-      const parsedResponse = JSON.parse(response.element) as EngineResponse;
-      resolveEngineResponse(parsedResponse);
-    } catch (error) {
-      console.error("Invalid engine response", error);
-    }
-  }
-}

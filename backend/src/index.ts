@@ -4,12 +4,10 @@ import { appRouter } from "./routes/index.js";
 import { env } from "./utils/env.js";
 import {
   connectRedis,
-  listenForEngineResponses,
   pingRedis,
 } from "./utils/engine-client.js";
 
 await connectRedis();
-void listenForEngineResponses();
 
 const app = express();
 

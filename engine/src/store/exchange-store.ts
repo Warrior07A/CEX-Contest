@@ -7,6 +7,11 @@ export interface Balance {
   locked: number;
 }
 
+export type UserWallet = {
+  available : number, 
+  locked : number
+}
+export type walletType = Record <string , Record <string , UserWallet>  >
 
 export interface OrderRecord {
   orderId: string;
@@ -16,10 +21,10 @@ export interface OrderRecord {
   symbol: string;
   price: number | null;
   qty: number;
-  filledQty: number;
-  status: OrderStatus;
-  fills: Fill[];
-  createdAt: number;
+  // filledQty: number;
+  // status: OrderStatus;
+  // fills: Fill[];
+  createdAt: Date
 }
 
 export interface Fill {
@@ -71,6 +76,6 @@ export interface DepthResponse {
 }
 
 export const BALANCES = new Map<string, Record<string, Balance>>();
-export const ORDERBOOKS = new Map<string, OrderBook>();
+// export const ORDERBOOKS = new Map<string, OrderBook>();
 export const ORDERS = new Map<string, OrderRecord>();
 export const FILLS: Fill[] = [];

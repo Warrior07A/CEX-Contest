@@ -32,11 +32,11 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     side,
     symbol,
     price: type === "market" ? null : price,
-    qty,  
+    qty, 
   });
 
   orderId++;
-  
+
   res.status(engineResponse.ok ? 200 : 400).json(engineResponse.ok ? engineResponse.data : {
     error: engineResponse.error,
   });

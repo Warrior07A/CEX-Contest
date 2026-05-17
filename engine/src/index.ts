@@ -1,85 +1,50 @@
 import "dotenv/config";
 import { createClient } from "redis";
 import { env } from "./utils/env.js";
-import { BALANCES, OrderBook, ORDERBOOKS, type CreateOrderInput, type RestingOrder } from "./store/exchange-store.js";
+import { MinHeap } from "./utils/minheap.js";
+import { MaxHeap } from "./utils/maxheap.js";
+import type { OrderRecord, walletType } from "./store/exchange-store.js";
+import util from "util";
+import { log } from "console";
 
-let balances  = {
+let minheap = new MinHeap([]);
+let maxheap = new MaxHeap([]);
 
-}
-let orderBook = {
-  "BTC" : {
-    ["asks"] : new Map<Number , RestingOrder>() , 
-    ["bids"] : new Map<Number , RestingOrder>()
-  },
-  "SOL" : {
-    ["asks"] : new Map<Number , RestingOrder>(), 
-    ["bids"] :new Map<Number , RestingOrder>() 
-  },
+let WALLET : walletType= {
   "USD" : {
-    ["asks"] : new Map<Number , RestingOrder>() ,
-    ["bids"] : new Map<Number , RestingOrder>() 
+    "7c2c182d-1c9f-41fd-8e7e-9dhdg6756efakshat" : {
+      available: 100 ,
+      locked: 100
+    }
+  },
+  "BTC" : {
+
+  } ,
+  "SOL" : {
+
+  },
+  "ETH" :{
+    
   }
+}satisfies walletType
+
+type StockDtype = {
+  totalQty : number , 
+  orders : OrderRecord[]
 }
-// xport interface RestingOrder {
-//   orderId: string;
-//   userId: string;
-//   side: Side;
-//   type: "limit";
-//   symbol: string;
-//   price: number;
-//   qty: number;
-//   filledQty: number;
-//   status: OrderStatus;
-//   createdAt: number;
+type TOffer = Record <("ASK" | "BIDS" ) , Map<number , StockDtype>>;
 
-orderBook.BTC.asks.set(90 , {
-  orderId : "1232" ,
-  userId : "12321" ,
-})
-// orderBook.set(
-//   "BTC", {
-//     "asks": {
-//       90: {
-//         orderId: 1,
-//         userId: 1,
-//         side: "sell",
-//         type: "limit",
-//         symbol: "BTC",
-//         price: 90,
-//         qty: 100,
-//         filledQty: 10,
-//         status: "partially_filled",
-//         createdAt: Date.now()
-//       },
-//       88: {
-//         orderId: 1,
-//         userId: 1,
-//         side: "sell",
-//         type: "limit",
-//         symbol: "BTC",
-//         price: 90,
-//         qty: 100,
-//         filledQty: 10,
-//         status: "partially_filled",
-//         createdAt: Date.now()
-//       },
-//       80: {
-//         orderId: 1,
-//         userId: 1,
-//         side: "sell",
-//         type: "limit",
-//         symbol: "BTC",
-//         price: 90,
-//         qty: 100,
-//         filledQty: 10,
-//         status: "partially_filled",
-//         createdAt: Date.now()
-//       },
-//       "bids": {
-//       }
-//   },
-
-// })
+type TOrderBook = Record <string  , TOffer>;
+let ORDERBOOK = {
+  BTC : {
+    ASK  : new Map<number , StockDtype>(), // price , [qty : [{} , {}, {}]];
+    BIDS : new Map<number , StockDtype>()  
+  },
+  SOL :{
+    ASK  : new Map<number , StockDtype>(), // price , [qty : [{} , {}, {}]];
+    BIDS : new Map<number , StockDtype>()  
+  }
+}satisfies TOrderBook
 
 export type EngineCommandType =
   | "create_order"
@@ -112,126 +77,205 @@ const responseClient = createClient({ url: env.redisUrl }).on("error", (error) =
 
 await Promise.all([brokerClient.connect(), responseClient.connect()]);
 
+// :-)) I added this just to check the flow, remove it when you start
+const DUMMY_SELL_ORDER = {
+  orderId: "dummy-sell-order-1",
+  userId: "dummy-seller",
+  type: "limit",
+  side: "sell",
+  symbol: "BTC",
+  price: 100,
+  qty: 1,
+  filledQty: 0,
+  status: "open",
+};
+
 async function sendResponse(responseQueue: string, response: EngineResponse): Promise<void> {
   await responseClient.lPush(responseQueue, JSON.stringify(response));
 }
 
-function matchmakingBuy(orderId :string ,  userId : string , type : string , side: string, symbol : string, price: number, qty : number){
-
-  let prices = Object.keys(orderBook[symbol]["asks"]);
-  console.log(prices);
-
+function seedfund(userId : string , asset : string){
+  WALLET[asset]![userId] = {
+    "available" : 10000,
+    "locked" : 0
+  }
 }
+
+console.log(util.inspect(ORDERBOOK.BTC.ASK, { depth: null, colors: true }));
+console.log(util.inspect(ORDERBOOK.BTC.BIDS, { depth: null, colors: true }));
+
+function checkdata(responsse : any){
+  console.log("hi");
+  console.log(response);
+}
+
 function handleEngineRequest(message: EngineRequest): unknown {
-  /**
-   * TODO(student):
-   * 1. Check _message.type.
-   * 2. Read _message.payload.
-   * 3. Call your order book / balance / order logic.
-   * 4. Return the data that should go back to the backend.
-   *
-   * Required message types:
-   * - create_order
-   * - get_depth
-   * - get_user_balance
-   * - get_order
-   * - cancel_order
-   */
-
-  // just checking the flow, remove this when you start implementing the logic
-  // 1. validate input + stock exists
-  // 2. check + lock balance (INR for BUY, stock for SELL)
-  // 3. run matching engine against opposite side of ORDERBOOK
-  // 4. write fills to FILLS, update filledQty + status on ORDERS
-  // 5. if leftover qty and LIMIT, rest on book; if MARKET, cancel remainder
-  // 6. settle balances on each fill (move locked -> other asset's available)
-  console.log(message);
   if (message.type === "create_order") {
-    let { orderId ,  userId, type, side, symbol, price, qty } = message.payload;
-    try {
-      if (!balances.userId) {
-        balances[userId] = {
-          "BTC": {
-            available: 1000,
-            locked: 0
-          },
-          "SOL": {
-            available: 1000,
-            locked: 0
-          },
-          "USD": {
-            available: 1000,
-            locked: 0
-          }
-        };
-      }
-      /// balance check for the userrrr
-      if (side == "buy") {
-        console.log("came in buy");
-        if (balances[userId][symbol]["available"] < (price * qty)) {
-          return {
-            msg: "INSUFFICIENT BALANCES",
-            user_balance: balances.userId[symbol]["available"]
-          }
-        }
-        
-        console.log("sufficient balances available !!");
-
-        balances[userId][symbol]["locked"] += (price * qty);
-        balances[userId][symbol]["available"] -= (price * qty);
-
-        // console.log(balances);
-        console.log(orderBook);
-        matchmakingBuy(orderId ,  userId, type, side, symbol, price, qty);
-        console.log("match making done");
-
-
-        return {
-          "orderBook" : orderBook
-        }
-        if (type == "market") {
-          let ArrayofPrices = orderBook.get(market)("asks").
-            orderBook.get(market)
-        }
-        else {
-
-        }
-
-
-      }
-      else {
-        return {
-          msg: "i came in sell"
-        }
-      }
-
-
-
-
-
-
-
-      // return {
-      //   orderId: crypto.randomUUID(),
-      //   status: "filled",
-      //   filledQty: DUMMY_SELL_ORDER.qty,
-      //   averagePrice: DUMMY_SELL_ORDER.price,
-      //   fills: [
-      //     {
-      //       fillId: crypto.randomUUID(),
-      //       symbol: DUMMY_SELL_ORDER.symbol,
-      //       price: DUMMY_SELL_ORDER.price,
-      //       qty: DUMMY_SELL_ORDER.qty,
-      //       buyOrderId: "request-buy-order",
-      //       sellOrderId: DUMMY_SELL_ORDER.orderId,
-      //     },
-      //   ],
-      //   note: "Smoke-test response only. Students must replace this with real matching logic.",
-      // };
+    let fills = [];
+    let payload = message.payload;
+    let {orderId, type , side , symbol , qty , userId, price } = message.payload as {
+      orderId : string , 
+      type : string ,
+      side : string ,
+      symbol : string , 
+      qty : number ,
+      userId : string ,
+      price : number 
+    };
+    let response = {
+      orderId : orderId,
+      userId : userId,
+      price: price,
+      qty : qty ,
+      filledqty : 0,
+      status: "partially filled"
     }
-    catch (e) {
-      throw new Error(e.message);
+    // let oppoffer2 = (side == "sell" ? "ASK" : "BIDS");
+    // ORDERBOOK[symbol]={
+    //   "ASK" : new Map(),
+    //   "BIDS" : new Map()
+    // }
+    // ORDERBOOK[symbol][oppoffer2].set(price , {
+    //       totalQty : qty , 
+    //       orders : [{
+    //         orderId : orderId,
+    //         userId : userId,
+    //         price : price , 
+    //         qty : qty
+    //       }]
+    //   })
+    // console.log(ORDERBOOK);
+    // ORDERBOOK[symbol][side].totalQty += qty;
+    // console.log(util.inspect(ORDERBOOK , { depth: null, colors: true }));
+
+    // checkdata(response);
+    // return{
+    //   msg : "no res"
+    // };
+    // if (payload.type == "limit"){
+    
+    //check for user balance
+
+    let userasset = (side == "buy" ? WALLET["USD"]! : WALLET[symbol])!;
+    if(!userasset[userId]){
+      console.log("seeded data in wallet");
+      seedfund(userId as string , side == "buy" ? "USD" : symbol);
     }
+    let userBalance = userasset[userId]!;
+    //wallet check
+    if (userBalance["available"] < (price * qty)){
+      return {
+        msg : "not enough funds"
+      }
+    }
+    userBalance["available"] -= price*qty;
+    userBalance["locked"] += price*qty;
+    
+    let minask = (minheap.getmin() ?? -1);
+    let maxask = (maxheap.getmax() ?? -1);
+
+    while(qty > 0 && (side == "buy" ? (minheap.size() && (payload.type =="limit" ? (price >= minask) : 1)) : (maxheap.size() && (payload.type == "limit" ? price <= maxask : 1)) )){
+      let currheap = (side == "buy" ? minheap : maxheap);
+      let currask = (side == "buy" ? minask : maxask);
+      let offer = (side == "buy" ? "ASK" : "BIDS");
+      let currorders = ORDERBOOK[symbol][offer].get(currask);
+      // console.log(util.inspect(ORDERBOOK[symbol][offer] , { depth: null, colors: true }));
+      const totalQty = currorders.totalQty;
+      let allOrders = currorders.orders
+
+      if ((qty - totalQty) >=0 ){
+        fills.push(allOrders)
+        response.filledqty += totalQty;
+        if (currheap == maxheap ?  currheap.removemax() : currheap.removemin());
+        qty -= Number(totalQty);
+        ORDERBOOK[symbol][offer].delete(currask);
+        currask = (currheap == minheap ? currheap.getmin() : currheap.getmax());
+        minask = minheap.getmin();
+        maxask = maxheap.getmax();
+        // console.log(minask); 
+      }
+      else{
+        let firstOrder = allOrders[0];
+          if ((qty - allOrders[0].qty) >= 0){
+            fills.push(firstOrder);
+            response.filledqty+= firstOrder.qty;
+            let oid = firstOrder.orderId;
+            let currask = (side == "buy" ? minask : maxask);
+            ORDERBOOK[symbol][offer].get(currask).totalQty -= firstOrder.qty;
+            qty -= allOrders[0].qty;                
+            allOrders = allOrders.filter(order => order.orderId !== oid);
+            ORDERBOOK[symbol][offer].get(currask)["orders"] = allOrders;
+          }
+          else{
+            let oid = firstOrder.orderId;
+            let filledqty = qty;
+            response.filledqty +=qty;
+            ORDERBOOK[symbol][offer].get(currask).totalQty -= qty;
+            firstOrder.qty -= filledqty;
+            fills.push({
+              orderId : oid ,
+              qty : filledqty,
+              price : price,
+              userId : userId
+            })
+            qty = 0;
+          }
+      }
+      minask = minheap.getmin();
+      maxask = maxheap.getmax();
+    }
+    let oppoffer = (side == "sell" ? "ASK" : "BIDS");
+    let orderplaced = false;
+    if(qty > 0){
+      if (ORDERBOOK[symbol] && ORDERBOOK[symbol][oppoffer].get(price)){
+        let order = ORDERBOOK[symbol][oppoffer].get(price);
+        order.totalQty += qty;
+        order.orders.push({
+          orderId : orderId,
+          userId : userId,
+          price : price , 
+          qty : qty
+        })
+      }
+      else{
+        if (!ORDERBOOK[symbol]){
+          ORDERBOOK[symbol]={
+            "ASK" : new Map<number , StockDtype>(),
+            "BIDS" : new Map<number , StockDtype>()
+          }
+
+        }
+        ORDERBOOK[symbol][oppoffer].set(price , {
+          totalQty : qty , 
+          orders : [{
+            orderId : orderId,
+            userId : userId,
+            price : price , 
+            qty : qty
+          }]
+        })
+        console.log(ORDERBOOK);
+        if (oppoffer == "ASK") minheap.insert(price);
+        else maxheap.insert(price);
+      }
+      orderplaced = true;
+    }
+    console.log(util.inspect(ORDERBOOK ,{ depth: null, colors: true }));
+    console.log(util.inspect(ORDERBOOK , { depth: null, colors: true }));
+    console.log(WALLET);
+    console.log("THE END");
+    if (response.qty == response.filledqty) response["status"] = "filled";
+    if (response.filledqty ==0) response["status"] = "open"
+    if (orderplaced) return {
+        msg : "your order has been placed",
+        res : response,
+        fills : fills
+    }
+    return {
+      res : response,
+      fills : fills
+    }
+    // }
   }
 
   throw new Error("TODO(student): implement this engine request type");
@@ -239,7 +283,7 @@ function handleEngineRequest(message: EngineRequest): unknown {
 
 console.log(`Engine listening on Redis queue: ${env.incomingQueue}`);
 
-for (; ;) {
+for (;;) {
   const item = await brokerClient.brPop(env.incomingQueue, 0);
   if (!item) continue;
 
