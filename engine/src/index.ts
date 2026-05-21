@@ -24,7 +24,7 @@ let WALLET : walletType= {
 
   },
   "ETH" :{
-    
+
   }
 }satisfies walletType
 
@@ -130,30 +130,6 @@ function handleEngineRequest(message: EngineRequest): unknown {
       filledqty : 0,
       status: "partially filled"
     }
-    // let oppoffer2 = (side == "sell" ? "ASK" : "BIDS");
-    // ORDERBOOK[symbol]={
-    //   "ASK" : new Map(),
-    //   "BIDS" : new Map()
-    // }
-    // ORDERBOOK[symbol][oppoffer2].set(price , {
-    //       totalQty : qty , 
-    //       orders : [{
-    //         orderId : orderId,
-    //         userId : userId,
-    //         price : price , 
-    //         qty : qty
-    //       }]
-    //   })
-    // console.log(ORDERBOOK);
-    // ORDERBOOK[symbol][side].totalQty += qty;
-    // console.log(util.inspect(ORDERBOOK , { depth: null, colors: true }));
-
-    // checkdata(response);
-    // return{
-    //   msg : "no res"
-    // };
-    // if (payload.type == "limit"){
-    
     //check for user balance
 
     let userasset = (side == "buy" ? WALLET["USD"]! : WALLET[symbol])!;
@@ -174,12 +150,12 @@ function handleEngineRequest(message: EngineRequest): unknown {
     let minask = (minheap.getmin() ?? -1);
     let maxask = (maxheap.getmax() ?? -1);
 
-    while(qty > 0 && (side == "buy" ? (minheap.size() && (payload.type =="limit" ? (price >= minask) : 1)) : (maxheap.size() && (payload.type == "limit" ? price <= maxask : 1)) )){
+    while(qty > 0 && (side == "buy" ? (minheap.size() && (type =="limit" ? (price >= minask) : 1)) : (maxheap.size() && (type == "limit" ? price <= maxask : 1)) )){
       let currheap = (side == "buy" ? minheap : maxheap);
       let currask = (side == "buy" ? minask : maxask);
       let offer = (side == "buy" ? "ASK" : "BIDS");
       let currorders = ORDERBOOK[symbol][offer].get(currask);
-      // console.log(util.inspect(ORDERBOOK[symbol][offer] , { depth: null, colors: true }));
+      console.log(util.inspect(ORDERBOOK[symbol][offer] , { depth: null, colors: true }));
       const totalQty = currorders.totalQty;
       let allOrders = currorders.orders
 
@@ -226,7 +202,8 @@ function handleEngineRequest(message: EngineRequest): unknown {
     }
     let oppoffer = (side == "sell" ? "ASK" : "BIDS");
     let orderplaced = false;
-    if(qty > 0){
+
+    if( qty > 0 && type == "limit"){
       if (ORDERBOOK[symbol] && ORDERBOOK[symbol][oppoffer].get(price)){
         let order = ORDERBOOK[symbol][oppoffer].get(price);
         order.totalQty += qty;

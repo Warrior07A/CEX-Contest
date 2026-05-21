@@ -30,8 +30,8 @@ export async function signup(req: Request, res: Response): Promise<void> {
       userId: user.id,
       username: user.username,
     });
-  } catch {
-    res.status(409).json({ error: "username already exists" });
+  } catch(e) {
+    res.status(409).json({ msg : e });
   }
 }
 
